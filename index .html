@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>LINGUA — Personal AI Trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0f; --bg2: #0f0f18; --bg3: #12121e;
+    --border: #1e1e2e; --border2: #2a2a3e;
+    --gold: #c8a96e; --gold2: #a8894e;
+    --text: #e8e4dc; --text2: #b0a898; --text3: #666; --text4: #444;
+    --green: #4a9e6e; --red: #9e4a4a;
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --mono: 'DM Mono', 'Courier New', monospace;
+  }
+  html { font-size: 16px; }
+  body { background:var(--bg); color:var(--text); font-family:var(--serif); min-height:100vh; line-height:1.6; -webkit-font-smoothing:antialiased; }
+  ::-webkit-scrollbar { width:4px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:#2a2a3e; border-radius:2px; }
+
+  @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes pulse  { 0%,100%{opacity:.3} 50%{opacity:1} }
+  .fade-up { animation:fadeUp .4s ease forwards; }
+  .pulse   { animation:pulse 1.4s ease-in-out infinite; }
+
+  /* ── API KEY MODAL ── */
+  #api-modal {
+    position:fixed; inset:0; z-index:999;
+    background:rgba(5,5,10,.94); backdrop-filter:blur(16px);
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  #api-modal.hidden { display:none; }
+  .modal-box { background:var(--bg2); border:1px solid var(--border2); border-radius:20px; padding:36px 32px; max-width:460px; width:100%; }
+  .modal-logo { font-family:var(--serif); font-size:30px; font-weight:300; color:var(--gold); margin-bottom:4px; }
+  .modal-sub  { font-family:var(--mono); font-size:9px; letter-spacing:.22em; color:var(--text4); margin-bottom:28px; text-transform:uppercase; }
+  .modal-label { font-family:var(--mono); font-size:10px; letter-spacing:.15em; color:var(--text3); margin-bottom:8px; text-transform:uppercase; }
+  .modal-input {
+    width:100%; background:var(--bg); border:1px solid var(--border2);
+    border-radius:10px; padding:13px 16px; color:var(--text);
+    font-family:var(--mono); font-size:13px; outline:none;
+    margin-bottom:10px; letter-spacing:.04em; transition:border-color .2s;
+  }
+  .modal-input:focus { border-color:var(--gold); }
+  .modal-hint { font-family:var(--mono); font-size:10px; color:var(--text4); margin-bottom:22px; line-height:1.7; }
+  .modal-hint a { color:var(--gold); text-decoration:none; }
+  .modal-error { font-family:var(--mono); font-size:10px; color:#c86e6e; margin-bottom:14px; display:none; }
+  .modal-btn {
+    width:100%; background:var(--gold); color:var(--bg);
+    border:none; border-radius:10px; padding:14px;
+    font-family:var(--mono); font-size:11px; letter-spacing:.15em;
+    cursor:pointer; text-transform:uppercase; transition:opacity .2s;
+  }
+  .modal-btn:hover { opacity:.85; }
+  .modal-security { margin-top:14px; font-family:var(--mono); font-size:9px; color:var(--text4); text-align:center; line-height:1.6; }
+
+  /* ── LAYOUT ── */
+  #app { display:flex; flex-direction:column; min-height:100vh; }
+  header {
+    position:sticky; top:0; z-index:200;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 24px; background:rgba(10,10,15,.96);
+    backdrop-filter:blur(12px); border-bottom:1px solid var(--border);
+  }
+  .logo { display:flex; flex-direction:column; gap:2px; }
+  .logo-name { font-family:var(--serif); font-size:20px; font-weight:300; letter-spacing:.1em; color:var(--gold); }
+  .logo-sub  { font-family:var(--mono); font-size:8px; letter-spacing:.25em; color:var(--text4); text-transform:uppercase; }
+  .header-right { display:flex; align-items:center; gap:14px; }
+  .key-btn { background:none; border:none; cursor:pointer; display:flex; align-items:center; gap:5px; }
+  .key-dot  { width:7px; height:7px; border-radius:50%; background:var(--green); }
+  .key-dot.off { background:var(--red); }
+  .key-label { font-family:var(--mono); font-size:9px; color:var(--text4); letter-spacing:.1em; }
+  .lang-toggle { display:flex; gap:3px; background:var(--bg3); border-radius:8px; padding:3px; }
+  .lang-btn { font-family:var(--mono); font-size:11px; letter-spacing:.1em; border:none; border-radius:6px; padding:6px 14px; cursor:pointer; transition:all .2s; background:transparent; color:var(--text3); }
+  .lang-btn.active { background:var(--gold); color:var(--bg); font-weight:400; }
+  .back-btn { background:none; border:none; color:var(--text3); cursor:pointer; font-family:var(--mono); font-size:12px; padding:4px 8px; transition:color .2s; margin-right:8px; }
+  .back-btn:hover { color:var(--text); }
+
+  main { flex:1; max-width:780px; width:100%; margin:0 auto; padding:0 20px 60px; }
+
+  /* ── TABS ── */
+  .tabs { display:flex; gap:2px; background:var(--bg3); border-radius:10px; padding:3px; margin:20px 0; }
+  .tab { flex:1; border:none; background:transparent; color:var(--text3); font-family:var(--mono); font-size:10px; letter-spacing:.12em; padding:9px 4px; border-radius:8px; cursor:pointer; transition:all .2s; text-transform:uppercase; }
+  .tab.active { background:var(--bg2); color:var(--gold); border:1px solid var(--border); }
+  .tab:hover:not(.active) { color:var(--text2); }
+
+  /* ── SECTION HEADERS ── */
+  .section-title { font-family:var(--serif); font-size:32px; font-weight:300; color:var(--text); margin:32px 0 6px; }
+  .section-title em { color:var(--gold); font-style:italic; }
+  .section-sub { font-family:var(--mono); font-size:9px; letter-spacing:.2em; color:var(--text4); margin-bottom:24px; text-transform:uppercase; }
+
+  /* ── PHRASES ── */
+  .category-pills { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:20px; }
+  .pill { font-family:var(--mono); font-size:10px; letter-spacing:.08em; border:1px solid var(--border2); border-radius:20px; padding:5px 12px; cursor:pointer; background:transparent; color:var(--text3); transition:all .2s; text-transform:uppercase; }
+  .pill.active { background:var(--gold); color:var(--bg); border-color:var(--gold); }
+  .pill:hover:not(.active) { border-color:var(--gold); color:var(--gold); }
+  .search-box { width:100%; background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:12px 16px; color:var(--text); font-family:var(--serif); font-size:15px; outline:none; margin-bottom:16px; transition:border-color .2s; }
+  .search-box:focus { border-color:var(--gold); }
+  .search-box::placeholder { color:var(--text4); }
+  .phrases-grid { display:flex; flex-direction:column; gap:2px; }
+  .phrase-row { display:grid; grid-template-columns:1fr 1fr auto; gap:12px; align-items:center; padding:13px 16px; border-radius:8px; border:1px solid transparent; transition:all .2s; background:var(--bg2); }
+  .phrase-row:hover { border-color:var(--border); background:var(--bg3); }
+  .phrase-row:nth-child(even) { background:var(--bg); }
+  .phrase-row:nth-child(even):hover { background:var(--bg3); }
+  .phrase-en { font-family:var(--serif); font-size:15px; color:var(--text); }
+  .phrase-de { font-family:var(--serif); font-size:14px; color:var(--text3); font-style:italic; }
+  .phrase-cat { font-family:var(--mono); font-size:8px; letter-spacing:.15em; color:var(--text4); text-transform:uppercase; white-space:nowrap; }
+  .no-results { text-align:center; padding:48px; color:var(--text4); font-family:var(--mono); font-size:11px; letter-spacing:.15em; }
+  .stats-row { display:flex; gap:16px; margin-bottom:20px; }
+  .stat { font-family:var(--mono); font-size:10px; color:var(--text4); }
+  .stat span { color:var(--gold); }
+
+  /* ── CHAT ── */
+  .topic-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:24px; }
+  .topic-card { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:16px; cursor:pointer; transition:all .2s; text-align:left; }
+  .topic-card:hover { border-color:var(--gold); background:rgba(200,169,110,.06); transform:translateY(-1px); }
+  .topic-card .icon { font-size:20px; margin-bottom:8px; }
+  .topic-card .name { font-family:var(--serif); font-size:15px; color:var(--gold); }
+  .topic-card .desc { font-family:var(--mono); font-size:10px; color:var(--text4); margin-top:3px; }
+  #messages { flex:1; overflow-y:auto; padding:16px 0; display:flex; flex-direction:column; gap:16px; }
+  .msg-wrap { display:flex; flex-direction:column; }
+  .msg-wrap.user { align-items:flex-end; }
+  .msg-wrap.assistant { align-items:flex-start; }
+  .bubble { max-width:82%; padding:14px 18px; border-radius:14px; font-family:var(--serif); font-size:15px; line-height:1.7; color:var(--text2); }
+  .msg-wrap.user .bubble { background:#1a1a2e; border:1px solid #2a2a4e; border-radius:14px 14px 4px 14px; }
+  .msg-wrap.assistant .bubble { background:var(--bg2); border:1px solid var(--border); border-radius:14px 14px 14px 4px; }
+  .coach-note { max-width:82%; margin-top:6px; background:rgba(200,169,110,.07); border:1px solid rgba(200,169,110,.2); border-radius:10px; padding:10px 14px; font-family:var(--mono); font-size:12px; color:#a89060; line-height:1.6; }
+  .typing-dots { display:flex; gap:5px; padding:8px 0; }
+  .dot { width:6px; height:6px; border-radius:50%; background:var(--gold); }
+  .chat-input-area { border-top:1px solid var(--border); padding-top:14px; }
+  .chat-row { display:flex; gap:10px; align-items:flex-end; }
+  .chat-textarea { flex:1; background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:12px 16px; color:var(--text); font-family:var(--serif); font-size:15px; line-height:1.5; outline:none; resize:none; transition:border-color .2s; max-height:120px; }
+  .chat-textarea:focus { border-color:var(--gold); }
+  .send-btn { width:46px; height:46px; background:var(--gold); color:var(--bg); border:none; border-radius:12px; font-size:18px; cursor:pointer; flex-shrink:0; transition:background .2s; display:flex; align-items:center; justify-content:center; }
+  .send-btn:hover { background:var(--gold2); }
+  .send-btn:disabled { opacity:.35; cursor:not-allowed; }
+  .chat-hint { font-family:var(--mono); font-size:9px; color:var(--text4); text-align:center; margin-top:7px; letter-spacing:.1em; }
+
+  /* ── EXERCISES ── */
+  .ex-types { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:28px; }
+  .ex-type-btn { background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:18px 16px; cursor:pointer; transition:all .2s; text-align:left; }
+  .ex-type-btn:hover { border-color:var(--gold); transform:translateY(-1px); }
+  .ex-type-btn .icon { font-size:22px; margin-bottom:8px; }
+  .ex-type-btn .name { font-family:var(--serif); font-size:16px; color:var(--gold); }
+  .ex-type-btn .desc { font-family:var(--mono); font-size:9px; color:var(--text4); margin-top:3px; }
+  .exercise-card { background:var(--bg2); border:1px solid var(--border); border-radius:16px; padding:26px; margin-top:4px; }
+  .ex-type-badge { font-family:var(--mono); font-size:9px; letter-spacing:.2em; color:var(--gold); margin-bottom:8px; text-transform:uppercase; }
+  .ex-title { font-family:var(--serif); font-size:22px; margin-bottom:16px; }
+  .ex-instruction { color:var(--text3); font-size:13px; margin-bottom:14px; line-height:1.6; font-family:var(--mono); }
+  .ex-content { background:var(--bg); border:1px solid var(--border2); border-radius:10px; padding:18px; font-family:var(--serif); font-size:17px; line-height:1.7; color:var(--text2); margin-bottom:16px; }
+  .ex-hint { font-family:var(--mono); font-size:11px; color:var(--text4); margin-bottom:16px; }
+  .ex-textarea { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:13px 16px; color:var(--text); font-family:var(--serif); font-size:15px; line-height:1.5; outline:none; resize:none; margin-bottom:14px; transition:border-color .2s; }
+  .ex-textarea:focus { border-color:var(--gold); }
+  .btn-row { display:flex; gap:10px; }
+  .btn-primary { flex:1; background:var(--gold); color:var(--bg); border:none; border-radius:10px; padding:13px; font-family:var(--mono); font-size:11px; letter-spacing:.12em; cursor:pointer; text-transform:uppercase; transition:opacity .2s; }
+  .btn-primary:hover { opacity:.85; }
+  .btn-secondary { flex:1; background:transparent; color:var(--text3); border:1px solid var(--border); border-radius:10px; padding:13px; font-family:var(--mono); font-size:11px; letter-spacing:.12em; cursor:pointer; text-transform:uppercase; transition:all .2s; }
+  .btn-secondary:hover { border-color:var(--border2); color:var(--text2); }
+  .answer-reveal { margin-top:18px; background:rgba(200,169,110,.07); border:1px solid rgba(200,169,110,.22); border-radius:10px; padding:18px; }
+  .answer-label { font-family:var(--mono); font-size:9px; color:var(--gold); letter-spacing:.2em; margin-bottom:8px; text-transform:uppercase; }
+  .answer-text { font-family:var(--serif); font-size:17px; color:#e8d4a0; margin-bottom:12px; }
+  .answer-explanation { font-size:13px; color:var(--text3); line-height:1.6; border-top:1px solid rgba(200,169,110,.15); padding-top:12px; font-family:var(--mono); }
+  .loading-card { text-align:center; padding:48px; font-family:var(--mono); font-size:11px; color:var(--text4); letter-spacing:.15em; }
+
+  .hidden { display:none !important; }
+
+  @media(max-width:520px) {
+    header { padding:12px 16px; }
+    main { padding:0 14px 50px; }
+    .topic-grid, .ex-types { grid-template-columns:1fr; }
+    .phrase-row { grid-template-columns:1fr 1fr; }
+    .phrase-cat { display:none; }
+    .section-title { font-size:26px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── API KEY MODAL ── -->
+<div id="api-modal">
+  <div class="modal-box">
+    <div class="modal-logo">LINGUA</div>
+    <div class="modal-sub">Personal AI Trainer · EN &amp; ES</div>
+    <div class="modal-label">Anthropic API Key</div>
+    <input class="modal-input" id="api-key-input" type="password"
+      placeholder="sk-ant-api03-…"
+      onkeydown="if(event.key==='Enter') saveKey()">
+    <div class="modal-hint">
+      API Key erstellen (kostenpflichtig, sehr günstig):<br>
+      <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com/settings/keys</a><br><br>
+      Der Key wird nur lokal in Ihrem Browser gespeichert (localStorage) und niemals übertragen.
+    </div>
+    <div class="modal-error" id="modal-error">Ungültiger Key — bitte prüfen.</div>
+    <button class="modal-btn" onclick="saveKey()">SPEICHERN &amp; STARTEN</button>
+    <div class="modal-security">🔒 Gespeichert in localStorage · nur auf diesem Gerät</div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div id="app">
+  <header>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="back-btn hidden" id="back-btn" onclick="goBack()">←</button>
+      <div class="logo">
+        <div class="logo-name">LINGUA</div>
+        <div class="logo-sub" id="header-sub">Personal AI Trainer</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="key-btn" onclick="resetKey()" title="API Key ändern">
+        <div class="key-dot" id="key-dot"></div>
+        <div class="key-label" id="key-label">API KEY</div>
+      </button>
+      <div class="lang-toggle">
+        <button class="lang-btn active" id="btn-en" onclick="setLang('EN')">EN</button>
+        <button class="lang-btn" id="btn-es" onclick="setLang('ES')">ES</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="tabs">
+      <button class="tab active" id="tab-phrases" onclick="showTab('phrases')">📖 Phrasen</button>
+      <button class="tab" id="tab-chat" onclick="showTab('chat')">💬 Chat</button>
+      <button class="tab" id="tab-exercise" onclick="showTab('exercise')">✏️ Übungen</button>
+    </div>
+
+    <!-- PHRASES -->
+    <div id="pane-phrases">
+      <div class="section-title">100 <em>Redewendungen</em></div>
+      <div class="section-sub" id="phrases-sub">die Muttersprachler tatsächlich verwenden</div>
+      <div class="category-pills" id="category-pills"></div>
+      <input class="search-box" id="search-box" placeholder="Suchen / Search…" oninput="filterPhrases()">
+      <div class="stats-row">
+        <div class="stat">Gesamt: <span id="count-total">100</span></div>
+        <div class="stat">Angezeigt: <span id="count-shown">100</span></div>
+      </div>
+      <div class="phrases-grid" id="phrases-grid"></div>
+    </div>
+
+    <!-- CHAT -->
+    <div id="pane-chat" class="hidden">
+      <div class="section-title" id="chat-title">KI-<em>Gespräch</em></div>
+      <div class="section-sub" id="chat-sub">mit Echtzeit Coach-Feedback</div>
+      <div id="topic-chooser">
+        <div style="font-family:var(--mono);font-size:9px;letter-spacing:.2em;color:var(--text4);margin-bottom:14px;text-transform:uppercase">
+          Thema wählen oder frei beginnen →
+        </div>
+        <div class="topic-grid" id="topic-grid"></div>
+        <div class="chat-input-area" style="margin-top:16px">
+          <div class="chat-row">
+            <textarea class="chat-textarea" id="free-start-input" rows="2"
+              placeholder="Oder direkt schreiben…"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();startFreeChat()}"></textarea>
+            <button class="send-btn" onclick="startFreeChat()">↑</button>
+          </div>
+        </div>
+      </div>
+      <div id="chat-wrap" style="display:none;flex-direction:column;height:calc(100vh - 210px)">
+        <div id="messages"></div>
+        <div id="typing" class="typing-dots hidden">
+          <div class="dot pulse" style="animation-delay:0s"></div>
+          <div class="dot pulse" style="animation-delay:.2s"></div>
+          <div class="dot pulse" style="animation-delay:.4s"></div>
+        </div>
+        <div class="chat-input-area">
+          <div class="chat-row">
+            <textarea class="chat-textarea" id="chat-input" rows="3"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea>
+            <button class="send-btn" id="send-btn" onclick="sendChat()">↑</button>
+          </div>
+          <div class="chat-hint" id="chat-hint-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXERCISE -->
+    <div id="pane-exercise" class="hidden">
+      <div class="section-title">KI-<em>Übungen</em></div>
+      <div class="section-sub" id="ex-sub">C1-C2 · KI-generiert · unbegrenzt</div>
+      <div class="ex-types" id="ex-types"></div>
+      <div id="ex-area"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────
+const PHRASES = {
+  EN: [
+    {p:"How's it going?",              de:"Wie läuft's?",                          cat:"Alltag"},
+    {p:"I'm just looking.",            de:"Ich schaue mich nur um.",                cat:"Alltag"},
+    {p:"Sounds good.",                 de:"Klingt gut.",                            cat:"Alltag"},
+    {p:"That makes sense.",            de:"Das macht Sinn.",                         cat:"Alltag"},
+    {p:"I'm not sure yet.",            de:"Ich bin mir noch nicht sicher.",          cat:"Alltag"},
+    {p:"Give me a second.",            de:"Gib mir eine Sekunde.",                   cat:"Alltag"},
+    {p:"It depends.",                  de:"Das kommt darauf an.",                    cat:"Alltag"},
+    {p:"I'll think about it.",         de:"Ich überlege es mir.",                    cat:"Alltag"},
+    {p:"Let's keep in touch.",         de:"Lass uns in Kontakt bleiben.",            cat:"Alltag"},
+    {p:"No worries.",                  de:"Keine Sorge.",                            cat:"Alltag"},
+    {p:"I'm running late.",            de:"Ich bin spät dran.",                      cat:"Alltag"},
+    {p:"That's a good point.",         de:"Das ist ein guter Punkt.",                cat:"Alltag"},
+    {p:"I didn't catch that.",         de:"Das habe ich nicht verstanden.",          cat:"Alltag"},
+    {p:"Could you say that again?",    de:"Können Sie das wiederholen?",             cat:"Alltag"},
+    {p:"Fair enough.",                 de:"Das ist fair / einverstanden.",           cat:"Alltag"},
+    {p:"Hang on a moment.",            de:"Warte kurz.",                             cat:"Alltag"},
+    {p:"What's the catch?",            de:"Was ist der Haken?",                      cat:"Alltag"},
+    {p:"I've been meaning to ask…",    de:"Ich wollte schon fragen…",               cat:"Alltag"},
+    {p:"You've got a point.",          de:"Da hast du Recht.",                       cat:"Alltag"},
+    {p:"Bear with me.",                de:"Habe etwas Geduld mit mir.",              cat:"Alltag"},
+    {p:"As far as I'm concerned…",     de:"Was mich betrifft…",                      cat:"Meinung"},
+    {p:"To be honest with you…",       de:"Um ehrlich zu sein…",                     cat:"Meinung"},
+    {p:"I'd say…",                     de:"Ich würde sagen…",                        cat:"Meinung"},
+    {p:"If you ask me…",               de:"Wenn du mich fragst…",                    cat:"Meinung"},
+    {p:"I beg to differ.",             de:"Da bin ich anderer Meinung.",             cat:"Meinung"},
+    {p:"I couldn't agree more.",       de:"Ich stimme vollkommen zu.",               cat:"Meinung"},
+    {p:"That's debatable.",            de:"Das ist diskutabel.",                     cat:"Meinung"},
+    {p:"I see your point, but…",       de:"Ich verstehe deinen Standpunkt, aber…",  cat:"Meinung"},
+    {p:"It's a matter of opinion.",    de:"Das ist Ansichtssache.",                  cat:"Meinung"},
+    {p:"You might be onto something.", de:"Da könntest du was dran haben.",          cat:"Meinung"},
+    {p:"I'm at a loss.",               de:"Ich bin ratlos.",                         cat:"Gefühle"},
+    {p:"It's getting on my nerves.",   de:"Es geht mir auf die Nerven.",             cat:"Gefühle"},
+    {p:"I'm over the moon.",           de:"Ich bin überglücklich.",                  cat:"Gefühle"},
+    {p:"I'm under a lot of pressure.", de:"Ich stehe unter großem Druck.",           cat:"Gefühle"},
+    {p:"I can't be bothered.",         de:"Ich habe keine Lust / Energie.",          cat:"Gefühle"},
+    {p:"I'm absolutely exhausted.",    de:"Ich bin total erschöpft.",                cat:"Gefühle"},
+    {p:"That caught me off guard.",    de:"Das hat mich überrumpelt.",               cat:"Gefühle"},
+    {p:"I was blown away.",            de:"Ich war überwältigt / begeistert.",       cat:"Gefühle"},
+    {p:"I'm not in the mood.",         de:"Ich bin nicht in der Stimmung.",          cat:"Gefühle"},
+    {p:"I'm on edge.",                 de:"Ich bin angespannt / nervös.",            cat:"Gefühle"},
+    {p:"Let's touch base.",            de:"Lass uns kurz abstimmen.",                cat:"Beruf"},
+    {p:"I'll get back to you.",        de:"Ich melde mich bei dir.",                 cat:"Beruf"},
+    {p:"Can we move that meeting?",    de:"Können wir das Meeting verschieben?",     cat:"Beruf"},
+    {p:"That's not in my wheelhouse.", de:"Das ist nicht mein Fachgebiet.",          cat:"Beruf"},
+    {p:"We're on the same page.",      de:"Wir sind einer Meinung / einig.",         cat:"Beruf"},
+    {p:"Let's table that for now.",    de:"Lass uns das erst mal zurückstellen.",    cat:"Beruf"},
+    {p:"I'll loop you in.",            de:"Ich binde dich mit ein.",                 cat:"Beruf"},
+    {p:"That's a stretch goal.",       de:"Das ist ein anspruchsvolles Ziel.",       cat:"Beruf"},
+    {p:"Let's run with it.",           de:"Lass es uns durchziehen.",                cat:"Beruf"},
+    {p:"It's a no-brainer.",           de:"Das ist eine klare Sache.",               cat:"Beruf"},
+    {p:"Long time no see!",            de:"Lange nicht gesehen!",                    cat:"Sozial"},
+    {p:"What have you been up to?",    de:"Was hast du so getrieben?",               cat:"Sozial"},
+    {p:"I owe you one.",               de:"Ich bin dir was schuldig.",               cat:"Sozial"},
+    {p:"You're a lifesaver.",          de:"Du rettest mir das Leben.",               cat:"Sozial"},
+    {p:"Don't mention it.",            de:"Kein Problem / Nicht der Rede wert.",     cat:"Sozial"},
+    {p:"It slipped my mind.",          de:"Das ist mir entfallen.",                  cat:"Sozial"},
+    {p:"My treat.",                    de:"Das geht auf mich.",                      cat:"Sozial"},
+    {p:"I'll keep that in mind.",      de:"Das behalte ich im Hinterkopf.",          cat:"Sozial"},
+    {p:"Drop me a line.",              de:"Schreib mir kurz.",                       cat:"Sozial"},
+    {p:"We'll play it by ear.",        de:"Wir lassen es auf uns zukommen.",         cat:"Sozial"},
+    {p:"I'm inclined to think…",       de:"Ich neige dazu zu denken…",              cat:"C1-C2"},
+    {p:"All things considered…",       de:"Alles in allem betrachtet…",             cat:"C1-C2"},
+    {p:"It stands to reason that…",    de:"Es liegt nahe, dass…",                   cat:"C1-C2"},
+    {p:"By the same token…",           de:"Nach demselben Prinzip / Ebenso…",       cat:"C1-C2"},
+    {p:"On the face of it…",           de:"Auf den ersten Blick…",                  cat:"C1-C2"},
+    {p:"It goes without saying.",      de:"Das versteht sich von selbst.",           cat:"C1-C2"},
+    {p:"I'll take that with a grain of salt.", de:"Das nehme ich mit Vorsicht.",    cat:"C1-C2"},
+    {p:"The jury's still out on that.",de:"Das ist noch nicht entschieden.",        cat:"C1-C2"},
+    {p:"We need to read between the lines.", de:"Wir müssen zwischen den Zeilen lesen.", cat:"C1-C2"},
+    {p:"That's beside the point.",     de:"Das geht am Thema vorbei.",              cat:"C1-C2"},
+    {p:"It's a double-edged sword.",   de:"Das ist ein zweischneidiges Schwert.",   cat:"C1-C2"},
+    {p:"We've come full circle.",      de:"Wir sind wieder am Ausgangspunkt.",      cat:"C1-C2"},
+    {p:"I'll take the bull by the horns.", de:"Ich nehme den Stier bei den Hörnern.", cat:"C1-C2"},
+    {p:"That opens a can of worms.",   de:"Das öffnet die Büchse der Pandora.",     cat:"C1-C2"},
+    {p:"Let's not beat around the bush.", de:"Lass uns nicht um den heißen Brei herumreden.", cat:"C1-C2"},
+    {p:"I'll cross that bridge when I come to it.", de:"Das Problem löse ich, wenn es sich stellt.", cat:"C1-C2"},
+    {p:"It's the tip of the iceberg.", de:"Das ist die Spitze des Eisbergs.",       cat:"C1-C2"},
+    {p:"Don't throw the baby out with the bathwater.", de:"Wirf das Kind nicht mit dem Bade aus.", cat:"C1-C2"},
+    {p:"We're in the same boat.",      de:"Wir sitzen im selben Boot.",             cat:"C1-C2"},
+    {p:"That's pushing the envelope.", de:"Das geht über die Grenzen hinaus.",      cat:"C1-C2"},
+    {p:"I'm just passing through.",    de:"Ich bin nur auf der Durchreise.",        cat:"Reisen"},
+    {p:"Could you point me in the right direction?", de:"Können Sie mir die Richtung zeigen?", cat:"Reisen"},
+    {p:"Is this seat taken?",          de:"Ist dieser Platz besetzt?",              cat:"Reisen"},
+    {p:"I've lost my bearings.",       de:"Ich habe mich verirrt.",                 cat:"Reisen"},
+    {p:"What time does the last train leave?", de:"Wann fährt der letzte Zug?",    cat:"Reisen"},
+    {p:"Can you recommend a local dish?", de:"Können Sie ein lokales Gericht empfehlen?", cat:"Reisen"},
+    {p:"Is the tip included?",         de:"Ist das Trinkgeld inbegriffen?",         cat:"Reisen"},
+    {p:"Do you have anything cheaper?",de:"Haben Sie etwas Günstigeres?",           cat:"Reisen"},
+    {p:"I'd like to check in, please.",de:"Ich möchte einchecken, bitte.",          cat:"Reisen"},
+    {p:"How far is it on foot?",       de:"Wie weit ist es zu Fuß?",               cat:"Reisen"},
+  ],
+  ES: [
+    {p:"¿Qué tal?",                    de:"Wie geht's?",                            cat:"Alltag"},
+    {p:"Estoy mirando, gracias.",       de:"Ich schaue mich nur um.",               cat:"Alltag"},
+    {p:"Me parece bien.",              de:"Das klingt gut / einverstanden.",         cat:"Alltag"},
+    {p:"Tiene sentido.",               de:"Das macht Sinn.",                         cat:"Alltag"},
+    {p:"No estoy seguro/a todavía.",   de:"Ich bin mir noch nicht sicher.",          cat:"Alltag"},
+    {p:"Dame un momento.",             de:"Gib mir einen Moment.",                   cat:"Alltag"},
+    {p:"Depende.",                     de:"Das kommt drauf an.",                     cat:"Alltag"},
+    {p:"Lo voy a pensar.",             de:"Ich werde darüber nachdenken.",           cat:"Alltag"},
+    {p:"Mantengámonos en contacto.",   de:"Lass uns in Kontakt bleiben.",            cat:"Alltag"},
+    {p:"No te preocupes.",             de:"Mach dir keine Sorgen.",                  cat:"Alltag"},
+    {p:"Llego tarde.",                 de:"Ich komme zu spät.",                      cat:"Alltag"},
+    {p:"Buen punto.",                  de:"Guter Punkt.",                            cat:"Alltag"},
+    {p:"No lo entendí.",               de:"Das habe ich nicht verstanden.",          cat:"Alltag"},
+    {p:"¿Me lo repite, por favor?",    de:"Könnten Sie das wiederholen?",            cat:"Alltag"},
+    {p:"Está bien / Vale.",            de:"In Ordnung / Okay.",                      cat:"Alltag"},
+    {p:"Espera un momento.",           de:"Warte einen Moment.",                     cat:"Alltag"},
+    {p:"¿Cuál es la trampa?",          de:"Was ist der Haken?",                      cat:"Alltag"},
+    {p:"Te quería preguntar…",         de:"Ich wollte dich fragen…",                cat:"Alltag"},
+    {p:"Tienes razón.",                de:"Du hast Recht.",                          cat:"Alltag"},
+    {p:"Ten paciencia conmigo.",       de:"Hab Geduld mit mir.",                     cat:"Alltag"},
+    {p:"En lo que a mí respecta…",    de:"Was mich betrifft…",                      cat:"Meinung"},
+    {p:"Para ser honesto/a…",          de:"Um ehrlich zu sein…",                     cat:"Meinung"},
+    {p:"Yo diría que…",                de:"Ich würde sagen…",                        cat:"Meinung"},
+    {p:"Si me preguntas a mí…",        de:"Wenn du mich fragst…",                   cat:"Meinung"},
+    {p:"No estoy de acuerdo.",         de:"Da bin ich anderer Meinung.",             cat:"Meinung"},
+    {p:"Estoy totalmente de acuerdo.", de:"Ich stimme vollkommen zu.",               cat:"Meinung"},
+    {p:"Eso es discutible.",           de:"Das ist diskutabel.",                     cat:"Meinung"},
+    {p:"Entiendo tu punto, pero…",     de:"Ich verstehe deinen Standpunkt, aber…",  cat:"Meinung"},
+    {p:"Es una cuestión de opinión.",  de:"Das ist Ansichtssache.",                  cat:"Meinung"},
+    {p:"Puede que tengas razón.",      de:"Du könntest Recht haben.",               cat:"Meinung"},
+    {p:"Estoy perdido/a.",             de:"Ich bin ratlos.",                         cat:"Gefühle"},
+    {p:"Me está poniendo de los nervios.", de:"Es geht mir auf die Nerven.",         cat:"Gefühle"},
+    {p:"Estoy en las nubes.",          de:"Ich bin überglücklich.",                  cat:"Gefühle"},
+    {p:"Estoy bajo mucha presión.",    de:"Ich stehe unter großem Druck.",           cat:"Gefühle"},
+    {p:"No tengo ganas.",              de:"Ich habe keine Lust.",                    cat:"Gefühle"},
+    {p:"Estoy agotado/a.",             de:"Ich bin total erschöpft.",                cat:"Gefühle"},
+    {p:"Me pilló desprevenido/a.",     de:"Das hat mich überrumpelt.",               cat:"Gefühle"},
+    {p:"Me quedé impresionado/a.",     de:"Ich war überwältigt.",                    cat:"Gefühle"},
+    {p:"No estoy de humor.",           de:"Ich bin nicht in der Stimmung.",          cat:"Gefühle"},
+    {p:"Estoy con los nervios a flor de piel.", de:"Ich bin angespannt.",            cat:"Gefühle"},
+    {p:"Pongámonos en contacto.",      de:"Lass uns kurz abstimmen.",               cat:"Beruf"},
+    {p:"Te respondo pronto.",          de:"Ich melde mich bald.",                    cat:"Beruf"},
+    {p:"¿Podemos cambiar la reunión?", de:"Können wir das Meeting verschieben?",     cat:"Beruf"},
+    {p:"No es mi área.",               de:"Das ist nicht mein Fachgebiet.",          cat:"Beruf"},
+    {p:"Estamos en la misma línea.",   de:"Wir sind einer Meinung.",                 cat:"Beruf"},
+    {p:"Lo dejamos para más tarde.",   de:"Das stellen wir erst mal zurück.",        cat:"Beruf"},
+    {p:"Te incluyo en el hilo.",       de:"Ich binde dich mit ein.",                 cat:"Beruf"},
+    {p:"Es un objetivo ambicioso.",    de:"Das ist ein anspruchsvolles Ziel.",       cat:"Beruf"},
+    {p:"Sigamos adelante con eso.",    de:"Lass uns das durchziehen.",               cat:"Beruf"},
+    {p:"Es algo obvio.",               de:"Das ist eine klare Sache.",               cat:"Beruf"},
+    {p:"¡Cuánto tiempo sin verte!",    de:"Lange nicht gesehen!",                    cat:"Sozial"},
+    {p:"¿Qué has estado haciendo?",    de:"Was hast du so getrieben?",               cat:"Sozial"},
+    {p:"Te debo una.",                 de:"Ich bin dir was schuldig.",               cat:"Sozial"},
+    {p:"Eres un salvavidas.",          de:"Du rettest mir das Leben.",               cat:"Sozial"},
+    {p:"De nada, no hay de qué.",      de:"Kein Problem / Nicht der Rede wert.",     cat:"Sozial"},
+    {p:"Se me fue de la cabeza.",      de:"Das ist mir entfallen.",                  cat:"Sozial"},
+    {p:"Yo invito.",                   de:"Das geht auf mich.",                      cat:"Sozial"},
+    {p:"Lo tendré en cuenta.",         de:"Das behalte ich im Hinterkopf.",          cat:"Sozial"},
+    {p:"Escríbeme.",                   de:"Schreib mir.",                            cat:"Sozial"},
+    {p:"Ya veremos cómo va.",          de:"Wir lassen es auf uns zukommen.",         cat:"Sozial"},
+    {p:"Me inclino a pensar que…",     de:"Ich neige dazu zu denken…",              cat:"C1-C2"},
+    {p:"Considerándolo todo…",         de:"Alles in allem betrachtet…",             cat:"C1-C2"},
+    {p:"Es lógico que…",               de:"Es liegt nahe, dass…",                   cat:"C1-C2"},
+    {p:"Por la misma razón…",          de:"Nach demselben Prinzip…",                cat:"C1-C2"},
+    {p:"A primera vista…",             de:"Auf den ersten Blick…",                  cat:"C1-C2"},
+    {p:"Está de más decirlo.",         de:"Das versteht sich von selbst.",           cat:"C1-C2"},
+    {p:"Me lo tomo con pinzas.",       de:"Das nehme ich mit Vorsicht.",             cat:"C1-C2"},
+    {p:"Aún no está decidido.",        de:"Das ist noch nicht entschieden.",         cat:"C1-C2"},
+    {p:"Hay que leer entre líneas.",   de:"Man muss zwischen den Zeilen lesen.",     cat:"C1-C2"},
+    {p:"Eso no viene al caso.",        de:"Das geht am Thema vorbei.",               cat:"C1-C2"},
+    {p:"Es un arma de doble filo.",    de:"Das ist ein zweischneidiges Schwert.",    cat:"C1-C2"},
+    {p:"Hemos vuelto al punto de partida.", de:"Wir sind wieder am Ausgangspunkt.", cat:"C1-C2"},
+    {p:"Hay que agarrar el toro por los cuernos.", de:"Den Stier bei den Hörnern packen.", cat:"C1-C2"},
+    {p:"Eso abre la caja de Pandora.", de:"Das öffnet die Büchse der Pandora.",      cat:"C1-C2"},
+    {p:"No andemos con rodeos.",       de:"Reden wir nicht um den heißen Brei.",     cat:"C1-C2"},
+    {p:"Ya cruzaremos ese puente cuando lleguemos.", de:"Das Problem löse ich, wenn es sich stellt.", cat:"C1-C2"},
+    {p:"Es la punta del iceberg.",     de:"Das ist die Spitze des Eisbergs.",        cat:"C1-C2"},
+    {p:"No tires lo bueno por lo malo.", de:"Wirf das Kind nicht mit dem Bade aus.", cat:"C1-C2"},
+    {p:"Estamos en el mismo barco.",   de:"Wir sitzen im selben Boot.",              cat:"C1-C2"},
+    {p:"Eso sobrepasa los límites.",   de:"Das geht über die Grenzen hinaus.",       cat:"C1-C2"},
+    {p:"Solo estoy de paso.",          de:"Ich bin nur auf der Durchreise.",         cat:"Reisen"},
+    {p:"¿Me puede orientar?",          de:"Können Sie mir die Richtung zeigen?",     cat:"Reisen"},
+    {p:"¿Está ocupado este asiento?",  de:"Ist dieser Platz besetzt?",              cat:"Reisen"},
+    {p:"Me he perdido.",               de:"Ich habe mich verirrt.",                  cat:"Reisen"},
+    {p:"¿A qué hora sale el último tren?", de:"Wann fährt der letzte Zug?",         cat:"Reisen"},
+    {p:"¿Qué plato típico recomienda?",de:"Welches lokale Gericht empfehlen Sie?",  cat:"Reisen"},
+    {p:"¿Está incluida la propina?",   de:"Ist das Trinkgeld inbegriffen?",          cat:"Reisen"},
+    {p:"¿Tiene algo más barato?",      de:"Haben Sie etwas Günstigeres?",            cat:"Reisen"},
+    {p:"Quisiera hacer el check-in.",  de:"Ich möchte einchecken.",                  cat:"Reisen"},
+    {p:"¿A cuánto está a pie?",        de:"Wie weit ist es zu Fuß?",                cat:"Reisen"},
+  ]
+};
+
+const TOPICS = {
+  EN: [
+    {icon:"🤖", name:"Technology & AI",    desc:"Future, innovation, society"},
+    {icon:"✈️", name:"Travel & Culture",   desc:"Places, habits, differences"},
+    {icon:"🎬", name:"Cinema & Art",        desc:"Films, directors, aesthetics"},
+    {icon:"🧠", name:"Philosophy",          desc:"Ethics, meaning, ideas"},
+    {icon:"📰", name:"Society & Politics",  desc:"Trends, debates, change"},
+    {icon:"📚", name:"Literature",          desc:"Books, authors, stories"},
+  ],
+  ES: [
+    {icon:"🤖", name:"Tecnología e IA",     desc:"Futuro, innovación, sociedad"},
+    {icon:"✈️", name:"Viajes y Cultura",    desc:"Lugares, costumbres, diferencias"},
+    {icon:"🎬", name:"Cine y Arte",          desc:"Películas, directores, estética"},
+    {icon:"🧠", name:"Filosofía",            desc:"Ética, sentido, ideas"},
+    {icon:"📰", name:"Política y Sociedad",  desc:"Tendencias, debates, cambios"},
+    {icon:"📚", name:"Literatura",           desc:"Libros, autores, historias"},
+  ]
+};
+
+const EX_TYPES = {
+  EN: [
+    {type:"translation", icon:"🔄", name:"Translation",    desc:"DE → EN (C1-C2)"},
+    {type:"gap-fill",    icon:"📝", name:"Gap Fill",        desc:"Advanced vocabulary"},
+    {type:"rewrite",     icon:"✏️", name:"Rewrite",         desc:"Complex structures"},
+    {type:"idiom",       icon:"💡", name:"Idioms",           desc:"Native expressions"},
+  ],
+  ES: [
+    {type:"translation", icon:"🔄", name:"Traducción",       desc:"DE → ES (C1-C2)"},
+    {type:"gap-fill",    icon:"📝", name:"Texto con Espacios",desc:"Vocabulario avanzado"},
+    {type:"rewrite",     icon:"✏️", name:"Reformulación",     desc:"Estructuras complejas"},
+    {type:"idiom",       icon:"💡", name:"Modismos",           desc:"Expresiones nativas"},
+  ]
+};
+
+// ─── STATE ──────────────────────────────────────
+let lang = 'EN';
+let activeTab = 'phrases';
+let activeCategory = 'Alle';
+let chatHistory = [];
+let chatLoading = false;
+let exLoading = false;
+let apiKey = '';
+
+// ─── API KEY ────────────────────────────────────
+function initKey() {
+  const stored = localStorage.getItem('lingua_api_key');
+  if (stored && stored.startsWith('sk-ant-')) {
+    apiKey = stored;
+    document.getElementById('api-modal').classList.add('hidden');
+    updateKeyIndicator(true);
+  } else {
+    document.getElementById('api-modal').classList.remove('hidden');
+    updateKeyIndicator(false);
+  }
+}
+
+function saveKey() {
+  const val = document.getElementById('api-key-input').value.trim();
+  const errEl = document.getElementById('modal-error');
+  if (!val.startsWith('sk-ant-')) {
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+  apiKey = val;
+  localStorage.setItem('lingua_api_key', val);
+  document.getElementById('api-modal').classList.add('hidden');
+  updateKeyIndicator(true);
+}
+
+function resetKey() {
+  localStorage.removeItem('lingua_api_key');
+  apiKey = '';
+  document.getElementById('api-key-input').value = '';
+  document.getElementById('api-modal').classList.remove('hidden');
+  updateKeyIndicator(false);
+}
+
+function updateKeyIndicator(ok) {
+  document.getElementById('key-dot').className = 'key-dot' + (ok ? '' : ' off');
+  document.getElementById('key-label').textContent = ok ? 'KEY OK' : 'KEY FEHLT';
+}
+
+// ─── CLAUDE API ─────────────────────────────────
+async function callClaude(messages, system) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system,
+      messages
+    })
+  });
+  if (!res.ok) throw new Error('API ' + res.status);
+  const data = await res.json();
+  return (data.content || []).map(b => b.text || '').join('');
+}
+
+// ─── LANGUAGE ───────────────────────────────────
+function setLang(l) {
+  lang = l;
+  document.getElementById('btn-en').classList.toggle('active', l==='EN');
+  document.getElementById('btn-es').classList.toggle('active', l==='ES');
+  activeCategory = 'Alle';
+  chatHistory = [];
+  showTopicChooser();
+  if (activeTab==='phrases')  renderPhrases();
+  if (activeTab==='chat')     renderTopics();
+  if (activeTab==='exercise') renderExTypes();
+  updateTexts();
+}
+
+function updateTexts() {
+  const es = lang==='ES';
+  document.getElementById('phrases-sub').textContent  = es ? 'die Muttersprachler tatsächlich verwenden' : 'that native speakers actually use';
+  document.getElementById('ex-sub').textContent       = es ? 'C1-C2 · KI-generiert · unbegrenzt' : 'C1-C2 · AI-generated · unlimited';
+  document.getElementById('chat-sub').textContent     = es ? 'con feedback del coach en tiempo real' : 'with real-time coach feedback';
+  document.getElementById('chat-hint-text').textContent = es ? 'SHIFT+ENTER para nueva línea · La IA corrige tu español' : 'SHIFT+ENTER for new line · AI coaches your English';
+  document.getElementById('chat-input').placeholder   = es ? 'Escribe en español...' : 'Write in English...';
+  document.getElementById('free-start-input').placeholder = es ? 'O escribe directamente…' : 'Or start writing directly…';
+}
+
+// ─── TABS ───────────────────────────────────────
+function showTab(tab) {
+  activeTab = tab;
+  ['phrases','chat','exercise'].forEach(t => {
+    document.getElementById('pane-'+t).classList.toggle('hidden', t!==tab);
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+  });
+  document.getElementById('header-sub').textContent = tab==='phrases' ? '100 Redewendungen' : tab==='chat' ? 'KI Gespräch' : 'KI Übungen';
+  if (tab==='phrases')  renderPhrases();
+  if (tab==='chat')     renderTopics();
+  if (tab==='exercise') renderExTypes();
+}
+
+// ─── PHRASES ────────────────────────────────────
+function renderPhrases() {
+  const data = PHRASES[lang];
+  const cats = ['Alle', ...new Set(data.map(p=>p.cat))];
+  document.getElementById('category-pills').innerHTML = cats.map(c =>
+    `<button class="pill ${c===activeCategory?'active':''}" onclick="setCategory('${c}')">${c}</button>`
+  ).join('');
+  filterPhrases();
+}
+function setCategory(cat) { activeCategory = cat; renderPhrases(); }
+function filterPhrases() {
+  const q = (document.getElementById('search-box').value||'').toLowerCase();
+  const data = PHRASES[lang].filter(p => {
+    const inCat = activeCategory==='Alle' || p.cat===activeCategory;
+    const inQ   = !q || p.p.toLowerCase().includes(q) || p.de.toLowerCase().includes(q);
+    return inCat && inQ;
+  });
+  document.getElementById('count-total').textContent = PHRASES[lang].length;
+  document.getElementById('count-shown').textContent = data.length;
+  const grid = document.getElementById('phrases-grid');
+  if (!data.length) { grid.innerHTML='<div class="no-results">KEINE ERGEBNISSE</div>'; return; }
+  grid.innerHTML = data.map(p =>
+    `<div class="phrase-row"><div class="phrase-en">${p.p}</div><div class="phrase-de">${p.de}</div><div class="phrase-cat">${p.cat}</div></div>`
+  ).join('');
+}
+
+// ─── CHAT ───────────────────────────────────────
+function renderTopics() {
+  document.getElementById('topic-grid').innerHTML = TOPICS[lang].map(t =>
+    `<div class="topic-card" onclick="startTopicChat('${t.name}')">
+       <div class="icon">${t.icon}</div><div class="name">${t.name}</div><div class="desc">${t.desc}</div>
+     </div>`
+  ).join('');
+}
+function showTopicChooser() {
+  document.getElementById('topic-chooser').style.display = '';
+  document.getElementById('chat-wrap').style.display = 'none';
+  chatHistory = [];
+  document.getElementById('messages').innerHTML = '';
+}
+function showChatWrap() {
+  document.getElementById('topic-chooser').style.display = 'none';
+  const cw = document.getElementById('chat-wrap');
+  cw.style.display = 'flex';
+  document.getElementById('back-btn').classList.remove('hidden');
+}
+function goBack() {
+  showTopicChooser();
+  document.getElementById('back-btn').classList.add('hidden');
+}
+async function startTopicChat(topic) {
+  showChatWrap();
+  chatHistory = [];
+  document.getElementById('messages').innerHTML = '';
+  const starter = lang==='EN'
+    ? `Let's talk about: "${topic}". Open with one engaging question or observation.`
+    : `Hablemos sobre: "${topic}". Abre con una pregunta u observación interesante.`;
+  await sendToClaude(starter, true);
+}
+async function startFreeChat() {
+  const inp = document.getElementById('free-start-input');
+  const txt = inp.value.trim(); if (!txt) return; inp.value = '';
+  showChatWrap(); chatHistory = []; document.getElementById('messages').innerHTML = '';
+  addMessage('user', txt);
+  await sendToClaude(txt, false, true);
+}
+async function sendChat() {
+  if (chatLoading) return;
+  const inp = document.getElementById('chat-input');
+  const txt = inp.value.trim(); if (!txt) return; inp.value = '';
+  addMessage('user', txt);
+  await sendToClaude(txt);
+}
+function addMessage(role, content, note=null) {
+  const msgs = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  wrap.className = `msg-wrap ${role} fade-up`;
+  const bub = document.createElement('div'); bub.className='bubble'; bub.textContent=content;
+  wrap.appendChild(bub);
+  if (note) { const n=document.createElement('div'); n.className='coach-note'; n.textContent=note; wrap.appendChild(n); }
+  msgs.appendChild(wrap); msgs.scrollTop=msgs.scrollHeight;
+}
+function setTyping(on) {
+  document.getElementById('typing').classList.toggle('hidden',!on);
+  document.getElementById('send-btn').disabled = on;
+  chatLoading = on;
+  document.getElementById('messages').scrollTop = 9999;
+}
+async function sendToClaude(txt, isInit=false, skipBubble=false) {
+  chatHistory.push({role:'user', content:txt});
+  setTyping(true);
+  try {
+    const sys = lang==='EN' ? SYS_CHAT_EN : SYS_CHAT_ES;
+    const raw = await callClaude(chatHistory, sys);
+    const {reply, note} = parseNote(raw);
+    chatHistory.push({role:'assistant', content:raw});
+    addMessage('assistant', reply, note);
+  } catch(e) {
+    addMessage('assistant', 'Fehler: ' + (e.message||'Verbindungsproblem. Bitte erneut versuchen.'));
+  }
+  setTyping(false);
+}
+function parseNote(text) {
+  const parts = text.split(/---+/);
+  if (parts.length>=2) return {reply:parts[0].trim(), note:parts.slice(1).join('---').trim()};
+  return {reply:text.trim(), note:null};
+}
+
+// ─── EXERCISES ──────────────────────────────────
+function renderExTypes() {
+  document.getElementById('ex-types').innerHTML = EX_TYPES[lang].map(t =>
+    `<button class="ex-type-btn" onclick="loadExercise('${t.type}')">
+       <div class="icon">${t.icon}</div><div class="name">${t.name}</div><div class="desc">${t.desc}</div>
+     </button>`
+  ).join('');
+  document.getElementById('ex-area').innerHTML = '';
+}
+async function loadExercise(type) {
+  if (exLoading) return; exLoading = true;
+  document.getElementById('ex-area').innerHTML =
+    `<div class="loading-card"><div style="font-size:24px;margin-bottom:12px">⟳</div>${lang==='EN'?'GENERATING…':'GENERANDO…'}</div>`;
+  const prompt = `Generate a ${type} exercise for a ${lang==='EN'?'English':'Spanish'} C1-C2 learner whose native language is German. Return ONLY the raw JSON object, no markdown, no explanation.`;
+  try {
+    const sys = lang==='EN' ? SYS_EX_EN : SYS_EX_ES;
+    const raw = await callClaude([{role:'user',content:prompt}], sys);
+    const ex = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    renderExercise(ex, type);
+  } catch(e) {
+    document.getElementById('ex-area').innerHTML =
+      `<div class="loading-card">Fehler: ${e.message||'Bitte erneut versuchen.'}</div>`;
+  }
+  exLoading = false;
+}
+function renderExercise(ex, type) {
+  const es = lang==='ES';
+  document.getElementById('ex-area').innerHTML = `
+    <div class="exercise-card fade-up">
+      <div class="ex-type-badge">${type}</div>
+      <div class="ex-title">${ex.title||''}</div>
+      <div class="ex-instruction">${ex.instruction||''}</div>
+      <div class="ex-content">${ex.content||''}</div>
+      ${ex.hint?`<div class="ex-hint">💡 ${ex.hint}</div>`:''}
+      <textarea class="ex-textarea" id="ex-answer" rows="3" placeholder="${es?'Tu respuesta…':'Your answer…'}"></textarea>
+      <div class="btn-row">
+        <button class="btn-primary" onclick='showExAnswer(${JSON.stringify(ex.answer)},${JSON.stringify(ex.explanation)})'>${es?'VER RESPUESTA':'CHECK ANSWER'}</button>
+        <button class="btn-secondary" onclick="loadExercise('${type}')">${es?'NUEVO':'NEW EXERCISE'}</button>
+      </div>
+      <div id="answer-box"></div>
+    </div>`;
+}
+function showExAnswer(answer, explanation) {
+  document.getElementById('answer-box').innerHTML = `
+    <div class="answer-reveal fade-up">
+      <div class="answer-label">${lang==='ES'?'✓ RESPUESTA CORRECTA':'✓ CORRECT ANSWER'}</div>
+      <div class="answer-text">${answer}</div>
+      <div class="answer-explanation">${explanation}</div>
+    </div>`;
+}
+
+// ─── SYSTEM PROMPTS ─────────────────────────────
+const SYS_CHAT_EN = `You are an elite English conversation partner and language coach for a C1-C2 level learner whose native language is German.
+1. Engage in natural, sophisticated conversation on any topic
+2. Respond naturally and fluently
+3. After EVERY user message, append a brief "📝 Coach Note:" section (separated by ---) noting 1-2 improvements if any, or brief encouragement if perfect. Max 3 lines.
+Respond in English.`;
+
+const SYS_CHAT_ES = `Eres un compañero de conversación de español de élite para un estudiante C1-C2 con lengua materna alemán.
+1. Conversaciones naturales y sofisticadas
+2. Responder fluidamente
+3. Después de CADA mensaje añade "📝 Nota del Coach:" (separada por ---) con 1-2 mejoras o aliento breve. Máximo 3 líneas.
+Responde en español.`;
+
+const SYS_EX_EN = `You are an English exercise generator for C1-C2 learners (native: German). Return ONLY this JSON (no markdown):
+{"type":"...","title":"...","instruction":"(in German)","content":"...","hint":"...","answer":"...","explanation":"(in German)"}`;
+
+const SYS_EX_ES = `Eres un generador de ejercicios de español para C1-C2 (lengua materna: alemán). Devuelve SOLO este JSON (sin markdown):
+{"type":"...","title":"...","instruction":"(en alemán)","content":"...","hint":"...","answer":"...","explanation":"(en alemán)"}`;
+
+// ─── INIT ───────────────────────────────────────
+initKey();
+renderPhrases();
+renderTopics();
+renderExTypes();
+updateTexts();
+</script>
+</body>
+</html>
